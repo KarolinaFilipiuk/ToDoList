@@ -4,8 +4,11 @@ class Task {
         this.title = title;
         this.description = description;
         this.date = date;
+        this.isCompleted = false;
         this.id = createUUID();
     }
+
+    static getIdentifier = item => item.parentElement.parentElement.querySelector("#identifier").textContent;
 }
 
 
@@ -20,15 +23,22 @@ class Planner {
         const list = document.querySelector("#task-list");
         const row = document.createElement("tr");
 
+        let buttonDoneColor = task.isCompleted ? "warning" : "success";
+        let buttonDoneText = task.isCompleted ? "Not Done" : "Done";
+        if (task.isCompleted) {
+            row.style = "text-decoration: line-through";
+        }
+
         row.innerHTML = `
-        <td></td>
+        <td>${task.isCompleted ? `<i class="fas fa-check-circle text-success">`: ""}</td>
         <td>${task.title}</td>
         <td>${task.description}</td>
         <td>${task.date}</td>
         <td id="identifier" class="hidden">${task.id}</td>
-        <td><a href="#" class="btn btn-success btn-sm cross-out">Done</a></td>
+        <td><a href="#" class="btn btn-${buttonDoneColor} btn-sm cross-out">${buttonDoneText}</a></td>
         <td><a href="#" class="btn btn-danger btn-sm delete">Delete</a></td>
-    `;
+        `;
+
         list.appendChild(row);
     }
 
@@ -40,34 +50,30 @@ class Planner {
             Planner.showAlert("Task removed", "success");
 
             // Remove task from store
-            Store.removeTask(event.target.parentElement.parentElement.querySelector("#identifier").textContent);
+            Store.removeTask(Task.getIdentifier(item));
+            // Store.removeTask(item.parentElement.parentElement.querySelector("#identifier").textContent);
         }
     }
 
     static crossOutTask(item) {
         if (item.classList.contains("cross-out")) {
-
+            const row = item.parentElement.parentElement;
             if (item.textContent == "Done") {
-                item.parentElement.parentElement.style = "text-decoration: line-through";
-                item.textContent = "Not done";
-                Planner.changeCheckMark(item);
-            } else {
-                item.parentElement.parentElement.style = "";
-                item.textContent = "Done";
-                Planner.changeCheckMark(item, "-");
-
+                row.style = "text-decoration: line-through";
+                row.querySelector(".cross-out").textContent = "Not Done";
+                row.querySelector(":first-child").innerHTML = `<i class="fas fa-check-circle text-success">`;
+                item.classList.toggle("btn-warning");
+                item.classList.toggle("btn-success");
+                Store.updateTask(Task.getIdentifier(item));
+            } else if (item.textContent == "Not Done") {
+                row.style = "";
+                row.querySelector(".cross-out").textContent = "Done";
+                row.querySelector(":first-child").innerHTML = ``;
+                item.classList.toggle("btn-warning");
+                item.classList.toggle("btn-success");
+                Store.updateTask(Task.getIdentifier(item), "-");
             }
-            item.classList.toggle("btn-warning");
-            item.classList.toggle("btn-success");
         }
-    }
-
-    static changeCheckMark(item, type = "+") {
-        if (type === "+") {
-            item.parentElement.parentElement.querySelector("td:first-child").innerHTML = `<i class="fas fa-check-circle text-success">`;
-        } else if (type === "-") {
-            item.parentElement.parentElement.querySelector("td:first-child").innerHTML = "";
-        } else throw new Error(`Incorrect operation, you can use only "+" or "-".`);
     }
 
     static showAlert(message, className) {
@@ -105,6 +111,20 @@ class Store {
     static addTask(task) {
         const tasks = Store.getTasks();
         tasks.push(task);
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
+
+    static updateTask(id, type = "+") {
+        const tasks = Store.getTasks();
+        tasks.forEach(task => {
+            if (task.id == id) {
+                if (type === "+") {
+                    task.isCompleted = true;
+                } else if (type === "-") {
+                    task.isCompleted = false;
+                }
+            }
+        });
         localStorage.setItem("tasks", JSON.stringify(tasks));
     }
 
